@@ -90,48 +90,50 @@ So the rappresentation would be:
 - Little-Endian: `\xff\xaa\xcc\dd`
 - Big-Endian: `\xdd\xcc\xaa\xff`
 
+# Exploit Based on OS:
+
+[Windows](#Windows-Stack-overflow-basics)
+[Linux](#Linux-Stack-overflow-basics)
+
 # Windows-Stack-overflow-basics
 
-This is a small repo for Windows Stack-Based Buffer overflow(x86).
+* [Lab Setup](#Win-lab-setup)
 <br>
 
-* [Lab Setup](#lab-setup)
+* [Identify the vulnerable field](#Win-reconnaissance)
 <br>
 
-* [Identify the vulnerable field](#reconnaissance)
+* [Bad chars detection](#Win-Bad-Chars)
 <br>
 
-* [Bad chars detection](#Bad-Chars)
+* [Finding ret instruction](#Win-Finding-ret-instruction)
 <br>
 
-* [Finding ret instruction](#Finding-ret-instruction)
-<br>
-
-* [Payload Creation](#Payload-creation)
+* [Payload Creation](#Win-Payload-creation)
 
 <br>
 
-* [Remote Exploitation](#Remote-exploitation)
+* [Remote Exploitation](#Win-Remote-exploitation)
 
 <br>
 
-# Lab Setup
+## Win Lab Setup
 
 For the lab i will use a windows 10 machine with:
 <br>
 
 
-## Decompiler and Debuger
+### Decompiler and Debuger
 [Cutter](https://cutter.re/)
 
-## Debugger and Patcher
+### Debugger and Patcher
 [x64dbg](https://x64dbg.com/)
 We just need to download from the site and put it in
 ```cmd
 C:\Program Files\x64dbg\
 ```
 
-## Buffer Overflow Extension
+### Buffer Overflow Extension
 [ERC](https://github.com/Andy53/ERC.Xdbg)
 To install it we just need to download the latest .zip folder from the [release page](https://github.com/Andy53/ERC.Xdbg/releases) and extract in:
 ```cmd
@@ -144,7 +146,7 @@ ERC --config SetWorkingDirectory C:\Users\%USERNAME%\Desktop\
 ```
 Now we are ready to do some Buffer Overflow:
 
-# Reconnaissance
+## Win Reconnaissance
 
 To exploit a Buffer-Overflow vulnerability we need to find one first.
 <br>
@@ -259,7 +261,7 @@ eip_control()	#call the function
 ```
 But before we set the $EIP address there is still one thing to check:
 
-# Bad Chars 
+## Win Bad Chars 
 
 When we inject the program field, our payload must avoid [control chars](https://en.wikipedia.org/wiki/Control_character); in fact they are non printable chars that tells the program what to do (like a string or file termination)
 <br>
@@ -316,14 +318,14 @@ ERC --bytearray -bytes 0x00 #add or use ur bad-chars
 ```
 and repeat the steps above to check.
 
-# Finding ret instruction
+## Win Finding ret instruction
 
 Now we can overwrite the $EIP with an address of our choice, but how can we benefit from that?
 <br>
 
 how can we execute code?
 
-## Jumping to the stack
+### Jumping to the stack
 
 To execute code, we will put code on-to the stack and map the $EIP to the $ESP this means that the next code that will be executed is the stack content (written by us).
 <br>
@@ -375,7 +377,7 @@ With `Ctrl + b` we can search for hex patterns
 
 !!THE MOST IMPORTANT PART IS THAT THE INSTRUCTION ADDRESS MUST NOT CONTAIN ANY BAD CHARS!!   
 
-# Payload creation
+## Payload creation
 
 This is the most important part where we craft our shell code to put on top-of the stack.
 <br>
@@ -457,7 +459,7 @@ exploit()
 ```
 Once we have launched the attack we will gain a calc.exe (that we can substitute with a cmd.exe or powershell.exe)
 
-# Remote exploitation
+## Win Remote exploitation
 
 A buffer overflow attack is much more powerfull if its attack vector is the network.
 <br>
@@ -500,7 +502,123 @@ So create unique pattern, check where the $eip offset is then search `jmp esp` a
 
 # Linux-Stack-overflow-basics
 
+* [Lab Setup](#Lin-lab-setup)
+<br>
 
+* [Identify the vulnerable field](#Lin-reconnaissance)
+<br>
+
+* [Bad chars detection](#Lin-Bad-Chars)
+<br>
+
+* [Finding ret instruction](#Lin-Finding-ret-instruction)
+<br>
+
+* [Payload Creation](#Lin-Payload-creation)
+
+<br>
+
+* [Remote Exploitation](#Lin-Remote-exploitation)
+
+<br>
+
+## Lin Lab Setup
+
+Setting up the lab for linux is gonna be easier because we just need to download progrmm from repositories.<br>
+
+### gdb (GEF)
+
+[gdb](https://it.wikipedia.org/wiki/GNU_Debugger) is the gnu linux integrated debugger.<br>
+We will use an extension called GEF, there are other around such as pwndbg and peta but personally i prefer GEF.<br>
+To install both the debugger and the GEF extension we just nee to run those commands:
+```bash
+sudo apt install gdb
+```
+Now that we have the default debugger we can install the GEF extension as the [official guide](https://hugsy.github.io/gef/install/) says:
+```bash
+bash -c "$(curl -fsSL https://gef.blah.cat/sh)"
+```
+!DISCLAIMER!<br>
+We are automatically downloading and installing a script from a URL so check EVERY TIME what you are downloading and never blindly trust the source.<br>
+!DISCALIMER!<br>
+
+### Ghidra
+
+In order to find vulnerable fileds we can use a decompiler, such as ghidra, Ida-free or cutter.<br>
+To install it is pretty simple:
+```bash
+sudo apt install ghidra
+```
+Once we have it we can run
+```bash
+ghidra
+```
+Then just press:
+```bash
+Ctrl + N
+```
+Select Non-shared project and eventually Click `i` to import a file to decompile.<br>
+
+### Radare 2
+
+Radare2 is a cmd Linux debugger, it is pretty powerfull but a bit complex to use as a beginner.<br>
+To install it we can run:
+```bash
+git clone https://github.com/radareorg/radare2
+cd radare2 ; sys/install.sh
+```
+Since is not beginner friendly i will not use it much on this repo.<br>
+For personal research and study you can find the complete guide and manual on the [official site](https://rada.re/n/radare2.html)
+
+## Lin-Recoinnaissance
+
+As for the windows part (that is primarily gui based) we need to find a field that is injectable.<br>
+The most probable fields for linux are pretty much the same as for the Windows ones:
+
+* Date  
+* Name
+* selection fileds (y\n) (m\f)
+* File inputs
+<br>
+
+### Vulnerable C func
+
+In addiction (if we could find a local copy of the binary) we can decompile the programm with Ghidra (setup above) and serach for [vulnerable C functions](https://w3.cs.jmu.edu/lam2mo/cs261_2023_08/c_funcs.html) such as:
+
+* atoi
+* atoll
+* atof
+* gets
+* strcat
+* strcpy
+* sprintf
+<br>
+We can also FUZZ the fields above and hope in some errors.<br>
+
+### Tracing
+
+If we have a local copy of the executable with can run it with basic linux command to check the binary imports of library.<br>
+In fact when a programm start, can import a all bunch of libraries either dinamically or statically, more [here](https://opensource.com/article/22/5/dynamic-linking-modular-libraries-linux).<br>
+So we can check dynamic calls with:
+```bash
+ltrace ./<bianry_to_run>
+```
+Or [static function call](https://opensource.com/article/22/6/static-linking-linux) with:
+```bash
+strace ./<binary_to_run>
+```
+### Segfault
+
+If we tested all the things above and at least one of them gave a segmentation fault that means that we found a possible attack vector:
+	
+![example](./pic/overflow_test.png)
+	
+So that means we can pass to the next part
+
+### Controll IP
+
+To make the stack-based buffer overflow significant we need to controll what we are going to execute, otherwise it will be just a DoS attack.<br>
+To do so we need to controll the Stack Pointer.<br>
 
 
 
