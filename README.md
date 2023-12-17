@@ -1,6 +1,6 @@
 # Introduction
-To better understand how we can perform such exploits we need to fisrt know how programms get executed.<br>
-In brief the CPU execute what is ine-code it is very low level instruction that we rappresent with assembly.<br>
+To better understand how we can perform such exploits we need to first know how programms get executed.<br>
+In brief the CPU execute what is machine-code it is very low level instruction that we rappresent with assembly.<br>
 The cpu has a standard routine in which performs its operation:<br>
 
 - FETCH (the machine instruction address is read from IAR(Instruction Address Register) and loaded to IR(Intruction Register))
@@ -23,7 +23,7 @@ To store the temprary data needed for the operations CPUs uses registers, there 
 ## Data-Registers
 
 |32-bits|64-bits|Description|
-|--------|--------|-------------|
+|-----------|------------|------------------|
 |EAX|RAX|Accumulator register used  for storing small input/output data and basic arithmetic|
 |EBX|RBX|It is used as base for addresses, (an address is identified by BX + offset: mov rax, [rbx + rdi * 8])|
 |ECX|RCX|Counter register used to count loop and instruction rotation|
@@ -31,7 +31,7 @@ To store the temprary data needed for the operations CPUs uses registers, there 
 
 ## Pointer Registers
 |32-bits|64-bits|Description|
-|--------|--------|-------------|
+|-----------|------------|------------------|
 |EIP|RIP|Instruction Pointer, store the offset address of the _next instruction to be executed_|
 |ESP|RSP|Stack Pointer, store the address of the _top of the stack_, important for baisc buffer overflow|
 |EBP|RBP|Base Pointer (or Frame Pointer), store the address of _base of the stack_|
@@ -67,7 +67,7 @@ Example for main:
 ## Index Registers
 
 |32-bits|64-bits|Description|
-|--------|--------|-------------|
+|------------|------------|------------------------------------|
 |ESI|RSI|It is the source index used when handling string operations, store the source index of a string|
 |EDI|RDI|It is the destionation index, it stores the index destination index of a string|
 
