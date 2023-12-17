@@ -1,3 +1,95 @@
+# Introduction
+To better understand how we can perform such exploits we need to fisrt know how programms get executed.<br>
+In brief the CPU execute what is ine-code it is very low level instruction that we rappresent with assembly.<br>
+The cpu has a standard routine in which performs its operation:<br>
+
+- FETCH (the machine instruction address is read from IAR(Instruction Address Register) and loaded to IR(Intruction Register))
+- Decode (The decoder convert the instruction in a cpu language ready to be oprated on)
+- Fetch Operand (Load eventual other data needed for processing)
+- Execute (The instruction is executed, for example an ALU operation)
+- Update Instruction Pointer (Eventually the instrunction pointer is incremented with the length of the executed instruction, that means the programm pass to next instruction)
+
+But to perform all these operations the CPU need temporary places to store information that need to be read write and executed.<br>
+
+# Registers
+
+To store the temprary data needed for the operations CPUs uses registers, there are different types of register based on its need:
+
+- [Data Registers](#Data-Registers)
+- [Pointer Registers](#Pointer-Registers)
+- [Stack Frames](#Stack-Frames)
+- [Index Registers](#Index-Registers)
+
+## Data-Registers
+
+|32-bits|64-bits|Description|
+|--------|--------|-------------|
+|EAX|RAX|Accumulator register used  for storing small input/output data and basic arithmetic|
+|EBX|RBX|It is used as base for addresses, (an address is identified by BX + offset: mov rax, [rbx + rdi * 8])|
+|ECX|RCX|Counter register used to count loop and instruction rotation|
+|EDX|RDX|Data register used to store large input/output data and advanced arithmetic (x and /)|
+
+## Pointer Registers
+|32-bits|64-bits|Description|
+|--------|--------|-------------|
+|EIP|RIP|Instruction Pointer, store the offset address of the _next instruction to be executed_|
+|ESP|RSP|Stack Pointer, store the address of the _top of the stack_, important for baisc buffer overflow|
+|EBP|RBP|Base Pointer (or Frame Pointer), store the address of _base of the stack_|
+
+## Stack Frames
+
+As the stack "grows" to lower addresses it is logically divided in region named `Stack Frames`, in fact for every function a stack space is initialized.<br>
+To do so in practice we first need to do the following steps named [Prologue](https://en.wikipedia.org/wiki/Function_prologue_and_epilogue):
+
+### Pologue
+
+- Store previous EBP address (we will restore the address once the function code ends)
+- Create a Stack Frame (with this instruction: `mov ebp, esp`)
+- Allocate some space on the stack by adding the sum of the space of the function's operation (`sub esp,0x<operation_length>`) 
+
+Example for main:
+	
+![prologue](./pic/prologue.png)
+	
+
+### Epilogue
+
+Once the function has ended its code is time to return to the previous stack frame, to do so we nee to do the following steps named [Epilogue](https://en.wikipedia.org/wiki/Function_prologue_and_epilogue)
+
+- Leave the current Stack Frame (`leave`)
+- Eventually return (`ret`) 
+
+Example for main:
+	
+![epilogue](./pic/epilogue.png)
+	
+
+## Index Registers
+
+|32-bits|64-bits|Description|
+|--------|--------|-------------|
+|ESI|RSI|It is the source index used when handling string operations, store the source index of a string|
+|EDI|RDI|It is the destionation index, it stores the index destination index of a string|
+
+# Endianness
+
+In order to execute and read data we need to have a convention for interpreting that data.<br>
+For this reason different technlogies uses different conventions: such as Little-Endian and Big-Endian.<br>
+To understand better we can see an example with an address:
+
+- Address (0x): `0xffaa5511`
+- Address (\x): `\xff\xaa\x55\x11`
+
+|Convention|Byte ff|Byte aa|Byte 55|Byte 11|
+|----------|-------|-------|-------|-------|
+|Big Endian|AA|BB|CC|DD|
+|Little Endian|DD|CC|BB|AA|
+
+So the rappresentation would be:
+
+- Little-Endian: `\xff\xaa\xcc\dd`
+- Big-Endian: `\xdd\xcc\xaa\xff`
+
 # Windows-Stack-overflow-basics
 
 This is a small repo for Windows Stack-Based Buffer overflow(x86).
@@ -405,6 +497,9 @@ Now we can craft our payload in the same way that we did above.
 <br>
 
 So create unique pattern, check where the $eip offset is then search `jmp esp` and wrote shell code on top of the stack.
+
+# Linux-Stack-overflow-basics
+
 
 
 
