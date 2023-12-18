@@ -639,11 +639,41 @@ In my example the input is a positional arg so i need to do:
 gdb <binary>
 run <payload>
 ```
+When the programm crashes we can analyze all its registers and see why this happened.<br>
+In the 99% of cases the Instruction Pointer is the cause of the crash: if it gets clobbered with garbage data it will likely point to invalid address causing the programm to exit.<br>
+	
+![Overflowed](./pic/buff_bowfunc.png)
+	
+We can see that in this example we found the letters that we send in the input field inside the instruction pointer.<br>
+This means that we can choose the code to be executed next !! (If there are no additional stack or address protection).<br>
+In fact once the programm crashes and we see that either the Stack Pointer or the Instrucion Pointer is being rewritten we need to know how far the Instruction Pointer is from the input function.<br>
+	
+![Offset in the stack](./pic/Offset_stack.png)
+	
+From this pic we can see the importance of founding the offset.<br>
+To find the exact offset we can just use GDB after we forced the programm to crash:
+```bash
+pattern search $eip
+```
+output:
+	
+![linux offset found](./pic/lin_offset.png)
+	
 
-
-### Controll IP
+## Controll IP (Instruction Pointer)
 
 To make the stack-based buffer overflow significant we need to controll what we are going to execute, otherwise it will be just a DoS attack.<br>
+Now that we know the exact distance of the Instruction Pointer from the input function we can rewrite that address sending raw bytes of the address (i will use python3).<br>
+```python
+def generate_payload(offset):
+	eip = b'B' * 4  #for 32 bits
+	buffer = b'A' * offset
+	payload = buffer + eip
+	return payload
+off = <offset_found>
+p = generate_payload(off)
+print(p)
+```
+
 To do so we need to controll the Stack Pointer.<br>
 
-For founding
