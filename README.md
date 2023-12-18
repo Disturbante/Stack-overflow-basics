@@ -92,7 +92,8 @@ So the rappresentation would be:
 
 # Exploit Based on OS:
 
-[Windows](#Windows-Stack-overflow-basics)
+[Windows](#Windows-Stack-overflow-basics)<br>
+
 [Linux](#Linux-Stack-overflow-basics)
 
 # Windows-Stack-overflow-basics
@@ -615,10 +616,34 @@ If we tested all the things above and at least one of them gave a segmentation f
 	
 So that means we can pass to the next part
 
+### Founding Offset
+
+To execute code we first need to find the distance of the Instrunction Pointer from the input function.<br>
+Once we have found that we can Cntroll the next instruction address.<br>
+
+By opening the file in GDB we can create a large enough payload to cause a `Seg_fault` and examinate the registers to check what we have clobbered:
+```bash
+gdb <binary>
+```
+to create pattern we can run:
+```bash
+pattern create 2000
+```
+output:
+	
+![Pattern creation](./pic/pattern_gen.png)
+	
+We can copy paste the payload.<br>
+In my example the input is a positional arg so i need to do:
+```bash
+gdb <binary>
+run <payload>
+```
+
+
 ### Controll IP
 
 To make the stack-based buffer overflow significant we need to controll what we are going to execute, otherwise it will be just a DoS attack.<br>
 To do so we need to controll the Stack Pointer.<br>
 
-
-
+For founding
