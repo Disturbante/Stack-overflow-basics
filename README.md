@@ -1,5 +1,5 @@
 # Introduction
-To better understand how we can perform such exploits we need to first know how programms get executed.<br>
+To better understand how we can perform such exploits we need to first know how programs get executed.<br>
 In brief the CPU execute what is machine-code it is very low level instruction that we rappresent with assembly.<br>
 The cpu has a standard routine in which performs its operation:<br>
 
@@ -7,7 +7,7 @@ The cpu has a standard routine in which performs its operation:<br>
 - Decode (The decoder convert the instruction in a cpu language ready to be oprated on)
 - Fetch Operand (Load eventual other data needed for processing)
 - Execute (The instruction is executed, for example an ALU operation)
-- Update Instruction Pointer (Eventually the instrunction pointer is incremented with the length of the executed instruction, that means the programm pass to next instruction)
+- Update Instruction Pointer (Eventually the instrunction pointer is incremented with the length of the executed instruction, that means the program pass to next instruction)
 
 But to perform all these operations the CPU need temporary places to store information that need to be read write and executed.<br>
 
@@ -41,7 +41,7 @@ To store the temprary data needed for the operations CPUs uses registers, there 
 As the stack "grows" to lower addresses it is logically divided in region named `Stack Frames`, in fact for every function a stack space is initialized.<br>
 To do so in practice we first need to do the following steps named [Prologue](https://en.wikipedia.org/wiki/Function_prologue_and_epilogue):
 
-### Pologue
+### Prologue
 
 - Store previous EBP address (we will restore the address once the function code ends)
 - Create a Stack Frame (with this instruction: `mov ebp, esp`)
@@ -296,7 +296,7 @@ def bad_chars():
 
 bad_chars()
 ```
-Once we have created the payload and the programm is crashed we should manually check the stack if some of the char is no longer present inside it;
+Once we have created the payload and the program is crashed we should manually check the stack if some of the char is no longer present inside it;
 <br>
 
 But luckily for us ERC will do the dirty job for us.
@@ -479,7 +479,7 @@ port = 8888		#ur port
 
 def fuzz():	#define fuzz function
 	try:
-	    for i in range(0,10000,500):	#send data until the programm crashes
+	    for i in range(0,10000,500):	#send data until the program crashes
 	        buffer = b"A"*i
 	        print(f"Fuzzing {i} bytes")
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -584,7 +584,7 @@ The most probable fields for linux are pretty much the same as for the Windows o
 
 ### Vulnerable C func
 
-In addiction (if we could find a local copy of the binary) we can decompile the programm with Ghidra (setup above) and serach for [vulnerable C functions](https://w3.cs.jmu.edu/lam2mo/cs261_2023_08/c_funcs.html) such as:
+In addiction (if we could find a local copy of the binary) we can decompile the program with Ghidra (setup above) and serach for [vulnerable C functions](https://w3.cs.jmu.edu/lam2mo/cs261_2023_08/c_funcs.html) such as:
 
 * atoi
 * atoll
@@ -599,7 +599,7 @@ We can also FUZZ the fields above and hope in some errors.<br>
 ### Tracing
 
 If we have a local copy of the executable with can run it with basic linux command to check the binary imports of library.<br>
-In fact when a programm start, can import a all bunch of libraries either dinamically or statically, more [here](https://opensource.com/article/22/5/dynamic-linking-modular-libraries-linux).<br>
+In fact when a program start, can import a all bunch of libraries either dinamically or statically, more [here](https://opensource.com/article/22/5/dynamic-linking-modular-libraries-linux).<br>
 So we can check dynamic calls with:
 ```bash
 ltrace ./<bianry_to_run>
@@ -639,19 +639,19 @@ In my example the input is a positional arg so i need to do:
 gdb <binary>
 run <payload>
 ```
-When the programm crashes we can analyze all its registers and see why this happened.<br>
-In the 99% of cases the Instruction Pointer is the cause of the crash: if it gets clobbered with garbage data it will likely point to invalid address causing the programm to exit.<br>
+When the program crashes we can analyze all its registers and see why this happened.<br>
+In the 99% of cases the Instruction Pointer is the cause of the crash: if it gets clobbered with garbage data it will likely point to invalid address causing the program to exit.<br>
 	
 ![Overflowed](./pic/buff_bowfunc.png)
 	
 We can see that in this example we found the letters that we send in the input field inside the instruction pointer.<br>
 This means that we can choose the code to be executed next !! (If there are no additional stack or address protection).<br>
-In fact once the programm crashes and we see that either the Stack Pointer or the Instrucion Pointer is being rewritten we need to know how far the Instruction Pointer is from the input function.<br>
+In fact once the program crashes and we see that either the Stack Pointer or the Instrucion Pointer is being rewritten we need to know how far the Instruction Pointer is from the input function.<br>
 	
 ![Offset in the stack](./pic/Offset_stack.png)
 	
 From this pic we can see the importance of founding the offset.<br>
-To find the exact offset we can just use GDB after we forced the programm to crash:
+To find the exact offset we can just use GDB after we forced the program to crash:
 ```bash
 pattern search $eip
 ```
@@ -725,7 +725,7 @@ Once we sent our payload we can check in hdb which characters aren't in the stac
 	
 ![bad chars gdb](./pic/lin_badchars.png)
 	
-in this picture we can see that `\x00` is a bad char because the programm gave a different output from the previous one.<br>
+in this picture we can see that `\x00` is a bad char because the program gave a different output from the previous one.<br>
 Once we repeated this process for pretty much all the chars (the most common are: `\x00 \x0A \x0D \xFF`)<br>
 
 ## Lin Payload Creation
