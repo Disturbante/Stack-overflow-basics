@@ -13,7 +13,7 @@ But to perform all these operations the CPU need temporary places to store infor
 
 # Registers
 
-To store the temprary data needed for the operations CPUs uses registers, there are different types of register based on its need:
+To store the temporary data needed for the operations CPUs uses registers, there are different types of register based on its need:
 
 - [Data Registers](#Data-Registers)
 - [Pointer Registers](#Pointer-Registers)
